@@ -9,9 +9,7 @@
 # Install once if needed:
 
 library(dplyr)
-library(tidyr)
 library(boot)
-library(multcompView)
 library(writexl)
 
 ###############################
@@ -28,7 +26,7 @@ df <- read.csv(
 # STEP 3. CREATE ACCURACY SCORES
 ###############################
 
-# Obligatory contexts
+# Number of obligatory contexts
 df$OBC <- (
   df$correct +
     df$misformed +
@@ -77,7 +75,7 @@ df$CEFR_num <- as.numeric(
 
 
 ####################################
-# STEP 5. TOKEN DATASETS
+# STEP 5. CREATE TOKEN-LEVEL DATASETS
 ####################################
 
 #############################
@@ -246,7 +244,7 @@ sac_token <- do.call(
 
 
 ####################################
-# STEP 6. DESCRIPTIVE RANKS
+# STEP 6. DESCRIPTIVE ACCURACY RANKS
 ####################################
 
 ###########################
@@ -339,7 +337,7 @@ rank_soc <- df %>%
   group_by(morpheme) %>%
   summarise(
     mean_SOC = mean(SOC),
-    mean_CCI = mean(CI),
+    mean_CI = mean(CI),
     mean_binary = mean(binary),
     mean_semantic = mean(semantic),
     mean_formal = mean(formal),
@@ -348,7 +346,7 @@ rank_soc <- df %>%
 
 cor.test(
   rank_soc$mean_SOC,
-  rank_soc$mean_CCI,
+  rank_soc$mean_CI,
   method="spearman",
   exact=FALSE
 )
@@ -384,7 +382,7 @@ rank_tlu <- df %>%
   group_by(morpheme) %>%
   summarise(
     mean_TLU = mean(TLU),
-    mean_CCI = mean(CI),
+    mean_CI = mean(CI),
     mean_binary = mean(binary),
     mean_semantic = mean(semantic),
     mean_formal = mean(formal),
@@ -393,7 +391,7 @@ rank_tlu <- df %>%
 
 cor.test(
   rank_tlu$mean_TLU,
-  rank_tlu$mean_CCI,
+  rank_tlu$mean_CI,
   method="spearman",
   exact=FALSE
 )
@@ -429,7 +427,7 @@ rank_sac <- df %>%
   group_by(morpheme) %>%
   summarise(
     mean_SAC = mean(SAC),
-    mean_CCI = mean(CI),
+    mean_CI = mean(CI),
     mean_binary = mean(binary),
     mean_semantic = mean(semantic),
     mean_formal = mean(formal),
@@ -438,7 +436,7 @@ rank_sac <- df %>%
 
 cor.test(
   rank_sac$mean_SAC,
-  rank_sac$mean_CCI,
+  rank_sac$mean_CI,
   method="spearman",
   exact=FALSE
 )
@@ -491,9 +489,9 @@ corr_results <- list(
     exact=FALSE
   ),
   
-  SOC_CCI = cor.test(
+  SOC_CI = cor.test(
     rank_soc$mean_SOC,
-    rank_soc$mean_CCI,
+    rank_soc$mean_CI,
     method="spearman",
     exact=FALSE
   ),
@@ -519,9 +517,9 @@ corr_results <- list(
     exact=FALSE
   ),
   
-  TLU_CCI = cor.test(
+  TLU_CI = cor.test(
     rank_tlu$mean_TLU,
-    rank_tlu$mean_CCI,
+    rank_tlu$mean_CI,
     method="spearman",
     exact=FALSE
   ),
@@ -547,9 +545,9 @@ corr_results <- list(
     exact=FALSE
   ),
   
-  SAC_CCI = cor.test(
+  SAC_CI = cor.test(
     rank_sac$mean_SAC,
-    rank_sac$mean_CCI,
+    rank_sac$mean_CI,
     method="spearman",
     exact=FALSE
   )
@@ -558,7 +556,7 @@ corr_results <- list(
 
 
 ########################################################
-# STEP 9. BOOTSTRAP PAIRWISE COMPARISONS
+# STEP 9. BOOTSTRAP MORPHEME ACCURACY DISTRIBUTIONS
 ########################################################
 
 bootstrap_morpheme_means <- function(
@@ -642,7 +640,7 @@ sac_boot <- bootstrap_morpheme_means(
 
 
 ###############################################
-# STEP 10. MURAKAMI-STYLE ACCURACY CLUSTERS
+# STEP 10.  BOOTSTRAP-BASED ACCURACY CLUSTERS
 ###############################################
 
 build_clusters <- function(
@@ -724,9 +722,9 @@ build_clusters <- function(
         )
         
         
-        ###################################
-        # IF ZERO NOT INSIDE CI
-        ###################################
+        ####################################################
+        # SIGNIFICANT DIFFERENCE IF THE 95% CI EXCLUDES ZERO
+        ####################################################
         
         if(ci[1] > 0 ||
            ci[2] < 0){
@@ -820,7 +818,7 @@ build_clusters <- function(
     paste0(
       "output/version1_results/",
       measure_name,
-      "_murakami_clusters.csv"
+      "_accuracy_clusters.csv"
     ),
     row.names=FALSE
   )
@@ -883,7 +881,7 @@ print(sac_clusters)
 ##################################
 
 sink(
-  "output/version1_results/murakami_clusters.txt"
+  "output/version1_results/accuracy_clusters.txt"
 )
 
 cat("\n============================\n")
@@ -909,7 +907,7 @@ sink()
 
 
 ########################################################
-#GLOBAL ACCURACY ORDER
+#GLOBAL ACCURACY CLUSTERS
 ########################################################
 
 build_global_clusters <- function(
@@ -965,7 +963,7 @@ build_global_clusters <- function(
   
   
   ###################################
-  # BUILD CLUSTERS
+  # ASSIGN CLUSTER
   ###################################
   
   clusters <- list()
@@ -1354,9 +1352,9 @@ plot(m4_sac)
 
 
 
-###############################
-# STEP 13. BOOTSTRAPPING
-###############################
+########################################
+# STEP 13. BOOTSTRAP REGRESSION ANALYSES
+########################################
 
 boot_model_lm <- function(
     formula,
@@ -1521,7 +1519,7 @@ boot_soc_formal <- run_boot_lm(
   score ~ formal + CEFR_num
 )
 
-boot_soc_cci <- run_boot_lm(
+boot_soc_CI <- run_boot_lm(
   soc_token,
   score ~ CI + CEFR_num
 )
@@ -1550,7 +1548,7 @@ boot_tlu_formal <- run_boot_glm(
     formal + CEFR_num
 )
 
-boot_tlu_cci <- run_boot_glm(
+boot_tlu_CI <- run_boot_glm(
   df,
   cbind(correct,tlu_failure) ~
     CI + CEFR_num
@@ -1577,7 +1575,7 @@ boot_sac_formal <- run_boot_lm(
   score ~ formal + CEFR_num
 )
 
-boot_sac_cci <- run_boot_lm(
+boot_sac_CI <- run_boot_lm(
   sac_token,
   score ~ CI + CEFR_num
 )
@@ -1610,7 +1608,7 @@ boot.ci(
 )
 
 boot.ci(
-  boot_soc_cci,
+  boot_soc_CI,
   type="bca",
   index=2
 )
@@ -1640,7 +1638,7 @@ boot.ci(
 )
 
 boot.ci(
-  boot_tlu_cci,
+  boot_tlu_CI,
   type="bca",
   index=2
 )
@@ -1670,7 +1668,7 @@ boot.ci(
 )
 
 boot.ci(
-  boot_sac_cci,
+  boot_sac_CI,
   type="bca",
   index=2
 )
@@ -1763,7 +1761,7 @@ save_lm_summary(
 
 save_lm_summary(
   m4_soc,
-  "output/version1_results/m4_soc_cci.csv"
+  "output/version1_results/m4_soc_CI.csv"
 )
 
 save_lm_summary(
@@ -1794,7 +1792,7 @@ save_glm_summary(
 
 save_glm_summary(
   m4_tlu,
-  "output/version1_results/m4_tlu_cci.csv"
+  "output/version1_results/m4_tlu_CI.csv"
 )
 
 save_glm_summary(
@@ -1825,7 +1823,7 @@ save_lm_summary(
 
 save_lm_summary(
   m4_sac,
-  "output/version1_results/m4_sac_cci.csv"
+  "output/version1_results/m4_sac_CI.csv"
 )
 
 save_lm_summary(
@@ -1858,8 +1856,8 @@ write.csv(
 )
 
 write.csv(
-  boot_soc_cci$t,
-  "output/version1_results/boot_soc_cci.csv",
+  boot_soc_CI$t,
+  "output/version1_results/boot_soc_CI.csv",
   row.names=FALSE
 )
 
@@ -1888,8 +1886,8 @@ write.csv(
 )
 
 write.csv(
-  boot_tlu_cci$t,
-  "output/version1_results/boot_tlu_cci.csv",
+  boot_tlu_CI$t,
+  "output/version1_results/boot_tlu_CI.csv",
   row.names=FALSE
 )
 
@@ -1918,8 +1916,8 @@ write.csv(
 )
 
 write.csv(
-  boot_sac_cci$t,
-  "output/version1_results/boot_sac_cci.csv",
+  boot_sac_CI$t,
+  "output/version1_results/boot_sac_CI.csv",
   row.names=FALSE
 )
 
@@ -2041,7 +2039,7 @@ cat("\nSOC CI BCa CI\n")
 
 print(
   boot.ci(
-    boot_soc_cci,
+    boot_soc_CI,
     type="bca",
     index=2
   )
@@ -2087,7 +2085,7 @@ cat("\nTLU CI BCa CI\n")
 
 print(
   boot.ci(
-    boot_tlu_cci,
+    boot_tlu_CI,
     type="bca",
     index=2
   )
@@ -2133,7 +2131,7 @@ cat("\nSAC CI BCa CI\n")
 
 print(
   boot.ci(
-    boot_sac_cci,
+    boot_sac_CI,
     type="bca",
     index=2
   )
@@ -2181,16 +2179,6 @@ sink()
 ###############################
 # DONE
 ###############################
-
-cat(
-  "\n\nAll Version 1 results saved in:\n",
-  "output/version1_results/\n\n"
-)
-
-###############################
-# DONE
-###############################
-
 
 cat(
   "\n\nAll Version 1 results saved in:\n",
